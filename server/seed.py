@@ -19,45 +19,51 @@ with app.app_context():
 
     print("Creating users...")
 
-    # make sure users have unique usernames
-    users = []
-    usernames = []
+users = []
+usernames = []
 
-    for i in range(20):
-        
+for i in range(20):
+    username = fake.first_name()
+    while not username or username in usernames:
         username = fake.first_name()
-        while username in usernames:
-            username = fake.first_name()
-        usernames.append(username)
+    usernames.append(username)
 
-        user = User(
-            username=username,
-            bio=fake.paragraph(nb_sentences=3),
-            image_url=fake.url(),
-        )
+    user = User(
+        username=username,
+        bio=fake.paragraph(nb_sentences=3),
+        image_url=fake.url(),
+    )
 
-        user.password_hash = user.username + 'password'
+    # ✅ Securely hash password
+    user.password_hash = username + 'password'
 
-        users.append(user)
+    # ✅ Debug check
+    if not user._password_hash:
+        print(f"[DEBUG] MISSING PASSWORD for user: {username}")
 
-    db.session.add_all(users)
+    users.append(user)
 
-    print("Creating recipes...")
-    recipes = []
-    for i in range(100):
-        instructions = fake.paragraph(nb_sentences=8)
-        
-        recipe = Recipe(
-            title=fake.sentence(),
-            instructions=instructions,
-            minutes_to_complete=randint(15,90),
-        )
+# ✅ Filter out any with missing hash (just in case)
+valid_users = [user for user in users if user._password_hash]
+db.session.add_all(valid_users)
 
-        recipe.user = rc(users)
-
-        recipes.append(recipe)
-
-    db.session.add_all(recipes)
+print("Creating recipes...")
+recipes = []
+for i in range(100):
+    instructions = fake.paragraph(nb_sentences=8)
     
-    db.session.commit()
-    print("Complete.")
+    recipe = Recipe(
+        title=fake.sentence(),
+        instructions=instructions,
+        minutes_to_complete=randint(15,90),
+    )
+
+    recipe.user = rc(users)
+
+    recipes.append(recipe)
+
+db.session.add_all(recipes)
+
+db.session.commit()
+
+print("Complete.")
